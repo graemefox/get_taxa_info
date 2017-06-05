@@ -1,0 +1,42 @@
+###### 26_05_17
+# jenny happy with the output from the run through above on sample 45.
+# going to run it on every sample now
+
+1. update your nucleotide database
+
+perl update_blastdb.pl nr
+open up qiime in the terminal
+
+go into the directory containing a folder for each sample.
+each subfolder should only contain two files, the R1 file and the R2 file.
+It assumed all your folders start wikth "Sample_01" or similar, as this will e used to name files later, The 1-9 below selects that region so change accoridngl.y
+run this and check there is nothing other than R1 and R2 present:   (*Sample should allow it to search through each folder)
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; cd $x ; ls | head -n 1 ; ls | sed -n 2p ; cd ../ ; done
+
+Assuming all OK (only two files in each, the files are paired up correctly)
+
+Assemble all the R1 and R2 files like this:
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; echo "Assembling $output"; cd $x ; R1=$(ls | head -n 1) ; R2=$(ls | sed -n 2p) ; join_paired_ends.py -f "$R1" -r "$R2" -o "$output"_assembled.fastq ; cd ../ ; done
+
+Check all the assembled file:
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; cd "$x"/"$output"_assembled.fastq ; ls ; cd ../../ ; done
+
+Remove the unjoined files (the  un1 and un2 files)
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; cd "$x"/"$output"_assembled.fastq ; rm *un1* *un2* ; cd ../../ ; done
+
+Perform Cutadapt using command above
+
+Convert to fasta using fasta_fastq_convert.py:
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; cd "$x"/"$output"_assembled.fastq ; ../../fastq_fasta_converter.py -i *_primers_removed.fastq -o "$x".fasta ; cd ../../ ; done
+
+
+empty seqs removed withfasta_sanity_checker_and_converter.py
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; echo "Converting $output"; cd "$x"/"$output"_assembled.fastq ; ../../fasta_sanity_checker_and_corrector.py -i *.fasta -o "$x"_checked.fasta ; cd ../../ ; done
+
+run pick_otus.py
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; echo "Picking OTUs from sample $output"; cd "$x"/"$output"_assembled.fastq ; pick_open_reference_otus.py -i *_checked.fasta -r ../../utax_sequence_file.fasta -o ../otus -p ../../graeme_param_file.txt --suppress_align_and_tree ; cd ../../ ; done
