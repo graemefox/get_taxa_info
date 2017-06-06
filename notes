@@ -41,3 +41,7 @@ for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ;
 run pick_otus.py
 
 for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; echo "Picking OTUs from sample $output"; cd "$x"/"$output"_assembled.fastq ; pick_open_reference_otus.py -i *_checked.fasta -r ../../utax_sequence_file.fasta -o ../otus -p ../../graeme_param_file.txt --suppress_align_and_tree ; cd ../../ ; done
+
+move all the output files into a folder (that you already made) called output
+
+for x in `find Sample* -maxdepth 0 -type d` ; do output=$(echo $x | cut -c1-9) ; cd "$x"/otus ; cp "$output"-* ../../output ; cd ../../ ; done
