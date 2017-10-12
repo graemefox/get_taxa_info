@@ -1,11 +1,10 @@
 #!/usr/bin/python -tt
 #FUNCTIONS
-
-def file_len(fname):
+def file_len(fname, count):
     with open(fname) as f:
-        for i, l in enumerate(f):
+        for count, l in enumerate(f):
             pass
-    return i + 1
+    return count + 1
 
 import argparse
 import Bio
@@ -84,7 +83,7 @@ with open(args.output, 'w') as output_file:
             next(biom_file)
             next(biom_file)
             for line in biom_file:
-                print(line)
+                #print(line)
                 success = "0"
                 for row in dicts:
                     if row['ID'] == line.split("\t")[0]:
@@ -145,13 +144,13 @@ with open(args.output, 'w') as output_file:
                     with open("temp_seq_file.fasta", 'w') as temp_file:
                         temp_file.write(">temp_seq\n" + str(sequence))
                         temp_file.close
-                    sub_string = "blastn -query temp_seq_file.fasta -db ~/Dropbox/QIIME/Latha/Graeme/utax_sequence_file.fasta -task blastn -dust no -outfmt \"7 qseqid sseqid evalue bitscore pident qcovhsp\" -perc_identity 100 -qcov_hsp_perc 75 -max_target_seqs 50 -num_threads 4 -out temp_blast_out.xml"
+                    sub_string = "blastn -query temp_seq_file.fasta -db ~/Dropbox/trimmed/utax_sequence_file.fasta -task blastn -dust no -outfmt \"7 qseqid sseqid evalue bitscore pident qcovhsp\" -perc_identity 100 -qcov_hsp_perc 75 -max_target_seqs 50 -num_threads 4 -out temp_blast_out.xml"
                     subprocess.call(sub_string, shell=True)
-                    os.remove("temp_seq_file.fasta")
+                    #os.remove("temp_seq_file.fasta")
                     blast_OTU_success = "0"
                     # if the blast search has found anything:
                     if os.path.isfile("temp_blast_out.xml"):
-                        if(int(file_len("temp_blast_out.xml")) > 5):
+                        if(int(file_len("temp_blast_out.xml", -1)) > 5):
                             blast_OTU_success = "1"
                             with open("temp_blast_out.xml", 'r') as blast_output:
                                 for outputline in blast_output:
@@ -170,7 +169,7 @@ with open(args.output, 'w') as output_file:
                                                             perc_sim,
                                                             "Percent_alignment_coverage",
                                                             hsp_perc.rstrip("\n")])
-                                os.remove("temp_blast_out.xml")
+                                #os.remove("temp_blast_out.xml")
 
                         # write out all the data from stage II of the process
                     if blast_OTU_success == "1":
@@ -205,7 +204,7 @@ perc_coverage = float(coverage) * 100
 ## do the main round of blast searches on everything from step 3.
 # this take a file generated previously "temo_blast_input.fasta", performs all the blast queries and writes out "temp_blast_out.xml"
 
-sub_string = "blastn -query temp_blast_input.fasta -db ~/ncbi_nt/all_nt_merged -task blastn -dust no -outfmt \"7 qseqid sseqid evalue bitscore pident qcovhsp sscinames staxids\" -perc_identity 95 -qcov_hsp_perc  " + str(perc_coverage) + " -max_target_seqs 50 -num_threads 8 -out temp_blast_out2.xml"
+sub_string = "blastn -query temp_blast_input.fasta -db ~/ncbi_nt/all_nt_merged -negative_gilist sequence.gi -task blastn -dust no -outfmt \"7 qseqid sseqid evalue bitscore pident qcovhsp sscinames staxids\" -perc_identity 95 -qcov_hsp_perc  " + str(perc_coverage) + " -max_target_seqs 50 -num_threads 8 -out temp_blast_out2.xml"
 subprocess.call(sub_string, shell=True)
 
 # get the top result from each blast search
@@ -233,7 +232,7 @@ if os.path.isfile("temp_blast_out2.xml"):
                                                 line.split("\t")[4],
                                                 line.split("\t")[5],
                                                 line.split("\t")[0]]) + "\n")
-    os.remove("temp_blast_out2.xml")
+    #os.remove("temp_blast_out2.xml")
 
 data_present = []
 empty_data = []
@@ -262,10 +261,11 @@ with open("temp_taxo_file.txt", 'w') as taxo:
 
 command_string = "gid-taxid temp_taxo_file.txt " + args.taxidnucl + " > gid-taxid_output.txt"
 subprocess.call(command_string, shell=True)
-os.remove("temp_taxo_file.txt")
+#os.remove("temp_taxo_file.txt")
 # the ids generated above can then be checked against the main database to get the long-format taxonomy info
-command_string = "cat gid-taxid_output.txt | taxonomy-reader " + args.names, \
-                        + " " + args.nodes + " > taxonomy_output.txt"
+
+command_string = "cat gid-taxid_output.txt | taxonomy-reader " + args.names + " " + args.nodes + " > taxonomy_output.txt"
+
 subprocess.call(command_string, shell=True)
 
 broken_taxonomy_output = []
@@ -292,17 +292,29 @@ if os.path.isfile("taxonomy_output.txt"):
                 item = item.replace("\tn\tn", "\tn")
                 taxonomy_info.append(item)
 
-    os.remove("taxonomy_output.txt")
+    #os.remove("taxonomy_output.txt")
     output = []
     for item, row in zip(data_present, taxonomy_info):
+        row = row.rstrip("\n")
+        row = row.rstrip("\n")
+        row = row.rstrip("\n")
+        row = row.rstrip("\n")
+        row_length = int(len(row.split("\t")))
+
+        print(row.split("\t")[row_length-3])
         row = row.replace("\n", "")
-        if row.split("\t")[3] == "No taxonomy information found" or len(row.split("\t")) < 16:
+        """
+        if row.split("\t")[3] == "No taxonomy information found" or ((row.split("\t")[9] == "n" and row.split("\t")[11] == "n")) \
+                        or ((row.split("\t")[10] == "n" and row.split("\t")[11] == "n" and row.split("\t")[12]) == "n"):
+            print(row)
+        #or len(row.split("\t")) < 16 \
+
+
             broken_taxonomy_output.append('\t'.join([item.split("\t")[0],
+
                                     item.split("\t")[1],
                                     item.split("\t")[2],
-                                    "No taxonomy information found in Blast , \
-                                        Database. Blast result gave species as ", \
-                                         + item.split("\t")[3],
+                                    "No taxonomy information found in Blast Database. Blast result gave species as " + item.split("\t")[3],
                                     "Percent_similarity:",
                                     item.split("\t")[7].rstrip("\n"),
                                     "Percent_alignment_coverage:",
@@ -310,23 +322,21 @@ if os.path.isfile("taxonomy_output.txt"):
                                     item.split("\t")[10].rstrip("\n"),
                                     "\n"
                                     ]))
-        else:
-            output.append('\t'.join([item.split("\t")[0],
-                                    item.split("\t")[1],
-                                    item.split("\t")[2],
-                                    "k__" + row.split("\t")[5] + "; p__", \
-                                        + row.split("\t")[7] + "; c__", \
-                                         + row.split("\t")[9] + "; o__", \
-                                          + row.split("\t")[11] + "; f__", \
-                                           + row.split("\t")[13] + "; g__", \
-                                            + row.split("\t")[15],
-                                    "Percent_similarity",
-                                    item.split("\t")[7],
-                                    "Percent_alignment_coverage",
-                                    item.split("\t")[8].rstrip("\n"),
-                                    item.split("\t")[10].rstrip("\n"),
-                                    "\n"
-                                    ]))
+        """
+        #else:
+            #print("this line being removed")
+            #print(row)
+        output.append('\t'.join([item.split("\t")[0],
+                                item.split("\t")[1],
+                                item.split("\t")[2],
+                                row.split("\t")[row_length-3],
+                                "Percent_similarity",
+                                item.split("\t")[7],
+                                "Percent_alignment_coverage",
+                                item.split("\t")[8].rstrip("\n"),
+                                item.split("\t")[10].rstrip("\n"),
+                                "\n"
+                                ]))
 with open(args.output, 'a') as output_file:
     for x in output:
         output_file.write(x)
@@ -334,7 +344,7 @@ with open(args.output, 'a') as output_file:
         output_file.write(x)
     for x in empty_data:
         output_file.write(x + "\n")
-
+"""
 KINGDOM_COUNTER2 = {}
 PHYLA_COUNTER2 = {}
 CLASS_COUNTER2 = {}
@@ -344,13 +354,13 @@ GENUS_COUNTER2 = {}
 SPECIES_COUNTER2 = {}
 
 # get length of file
-file_length =  file_len(args.output)
+file_length =  file_len(args.output,  0)
 
 with open(args.output, 'r') as input_file:
     next(input_file)
     count = 1
     for line in input_file:
-        print(line)
+        #print(line)
         if int(count) < int(file_length - 1):
             taxa = line.split("\t")[3]
             matchObj1 = re.findall( r'No BLAST result found', taxa, re.M|re.I)
@@ -382,10 +392,10 @@ with open(args.output, 'r') as input_file:
                     GENUS_COUNTER2[taxa.split("; ")[5].lstrip("g__")] = 1
                 else:
                     GENUS_COUNTER2[taxa.split("; ")[5].lstrip("g__")] += 1
-                #if not taxa.split("; ")[6].lstrip("s__") in SPECIES_COUNTER2:
-                #    SPECIES_COUNTER2[taxa.split("; ")[6].lstrip("s__")] = 1
-                #else:
-                #    SPECIES_COUNTER2[taxa.split("; ")[6].lstrip("s__")] += 1
+                if not taxa.split("; ")[6].lstrip("s__") in SPECIES_COUNTER2:
+                    SPECIES_COUNTER2[taxa.split("; ")[6].lstrip("s__")] = 1
+                else:
+                    SPECIES_COUNTER2[taxa.split("; ")[6].lstrip("s__")] += 1
             count = count + 1
 
 with open(args.summary_output, 'w') as summary_out:
@@ -410,9 +420,9 @@ with open(args.summary_output, 'w') as summary_out:
     summary_out.write("\nGENUS\n")
     for x in GENUS_COUNTER:
         summary_out.write(x + "\t" + str(GENUS_COUNTER[x]) + "\n")
-    #summary_out.write("\nSPECIES\n")
-    #for x in SPECIES_COUNTER:
-    #    summary_out.write(x + "\t" + str(SPECIES_COUNTER[x]) + "\n")
+    summary_out.write("\nSPECIES\n")
+    for x in SPECIES_COUNTER:
+        summary_out.write(x + "\t" + str(SPECIES_COUNTER[x]) + "\n")
 
     summary_out.write("\n\n\nFollowing section contains the taxa info gathered from all different processing steps\n")
     summary_out.write("This includes the de novo OTU picking and the info gained from blasting the ncbi\n")
@@ -435,14 +445,17 @@ with open(args.summary_output, 'w') as summary_out:
     summary_out.write("\nGENUS\n")
     for x in GENUS_COUNTER2:
         summary_out.write(x + "\t" + str(GENUS_COUNTER2[x]) + "\n")
-    #summary_out.write("\nSPECIES\n")
-    #for x in SPECIES_COUNTER2:
-    #    summary_out.write(x + "\t" + str(SPECIES_COUNTER2[x]) + "\n")
+    summary_out.write("\nSPECIES\n")
+    for x in SPECIES_COUNTER2:
+        summary_out.write(x + "\t" + str(SPECIES_COUNTER2[x]) + "\n")
 summary_out.close()
+"""
 # tidy up some files
+"""
 if os.path.isfile("temp_blast_input.fasta"):
     os.remove("temp_blast_input.fasta")
 if os.path.isfile("temp_grep_output.txt"):
     os.remove("temp_grep_output.txt")
 if os.path.isfile("gid-taxmid_output.txt"):
     os.remove("gid-taxid_output.txt")
+"""
